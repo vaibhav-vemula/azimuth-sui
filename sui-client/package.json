@@ -1,0 +1,19 @@
+{
+  "name": "azimuth-sui-client",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Azimuth ground-station Sui client — heartbeats (PoA), PoRx proofs, Walrus storage, image merge",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "heartbeat": "node -e \"import('./heartbeat.js').then(m=>m.sendHeartbeat())\"",
+    "crank": "node -e \"import('./eventTracker.js').then(m=>m.crankEpoch())\""
+  },
+  "dependencies": {
+    "@mysten/bcs": "^1.2.0",
+    "@mysten/seal": "^0.4.0",
+    "@mysten/sui": "^1.30.0",
+    "@mysten/walrus": "^0.6.0",
+    "dotenv": "^16.4.0"
+  }
+}

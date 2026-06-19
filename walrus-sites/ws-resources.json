@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "/*": {
+      "Cache-Control": "max-age=3600"
+    }
+  },
+  "routes": {
+    "/*": "/index.html"
+  },
+  "metadata": {
+    "link": "https://github.com/your-org/azimuth",
+    "name": "Azimuth",
+    "description": "Decentralized satellite ground-station network on Sui + Walrus"
+  }
+}
