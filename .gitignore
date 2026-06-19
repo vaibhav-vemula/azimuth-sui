@@ -1,0 +1,32 @@
+# Environment & secrets
+.env
+.env.local
+
+# Node
+node_modules/
+
+# Move
+move/azimuth/build/
+move/scripts/publish-output.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Runtime state files
+sui_state.json
+sui_state.json.tmp
+reception_event.json
+sui-client/merger_state.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+.claude
+.next
