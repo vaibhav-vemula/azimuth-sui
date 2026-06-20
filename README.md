@@ -17,7 +17,7 @@
 
 Satellites pass overhead transmitting images and sensor data every day — and most of it is lost, because the **economics** of receiving it are broken. Azimuth turns low-cost, independently-run ground stations into a coordinated network that captures **real satellite downlinks**, merges partial captures from multiple stations into one complete image, stores all data on **Walrus**, and **proves every reception and its data availability on Sui** — paying operators who build a verifiable on-chain credit history from uptime and reception quality.
 
-> **Built for the [Sui Overflow](https://overflow.sui.io/) Walrus track.** The Walrus track is about large, off-chain, **verifiable** data. Azimuth produces real-world data that *must* be stored, proven available, and trustlessly verified — and it uses Walrus's programmable features as the spine of the system, not as a storage afterthought.
+> **Built for the [Sui Overflow](https://overflow.sui.io/) Walrus track** — *"Walrus as a Verifiable Data Platform for AI."* See **[`agents/`](agents/)**: a multi-agent ground-station network whose **memory lives on Walrus via MemWal** (Operator/Coordinator/Analyst agents). Plan: [`PATH_B_AGENTIC_PLAN.md`](PATH_B_AGENTIC_PLAN.md). The Sui + Walrus storage layer below is the substrate the agents act on.
 
 ---
 

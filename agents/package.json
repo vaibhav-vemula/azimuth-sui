@@ -1,0 +1,22 @@
+{
+  "name": "azimuth-agents",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Azimuth Agents — multi-agent ground-station network with verifiable memory on Walrus + MemWal",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js all",
+    "operator": "node index.js operator",
+    "coordinator": "node index.js coordinator",
+    "analyst": "node index.js analyst",
+    "demo": "node index.js demo"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@mysten/sui": "^1.30.0",
+    "ai": "^4.0.0",
+    "dotenv": "^16.4.0",
+    "zod": "^3.23.0"
+  },
+  "comment": "MemWal is intentionally NOT a dependency (its Seal peer pulls @mysten/sui v2). It is dynamically imported by shared/memory.js only when MEMWAL_* env vars are set. To enable it: npm install @mysten-incubation/memwal --legacy-peer-deps"
+}

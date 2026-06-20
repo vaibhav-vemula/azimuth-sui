@@ -76,7 +76,7 @@ node register.mjs
 ---
 
 ## 4. Run the station service
-
+ 
 On each station machine (e.g. a Raspberry Pi), alongside the Python receiver:
 
 ```bash

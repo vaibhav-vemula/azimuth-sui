@@ -20,6 +20,9 @@ sui_state.json.tmp
 reception_event.json
 sui-client/merger_state.json
 
+# Agent memory (local fallback store)
+agents/.memory/
+
 # OS files
 .DS_Store
 Thumbs.db
