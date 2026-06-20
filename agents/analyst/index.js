@@ -66,8 +66,24 @@ export async function runAnalystCycle() {
   if (processed === 0) console.log("   no new merged images.");
 }
 
+/**
+ * Continuous watch: poll for new merged images and analyze them automatically.
+ * This is what makes the Analyst part of the live loop instead of a manual step.
+ */
+export async function runAnalystWatch({ intervalMs = 30000 } = {}) {
+  console.log(`\n👁  Analyst watch — polling every ${intervalMs / 1000}s (Ctrl+C to stop)`);
+  let stop = false;
+  process.on("SIGINT", () => { stop = true; console.log("\n[analyst] stopping…"); process.exit(0); });
+  // eslint-disable-next-line no-constant-condition
+  while (!stop) {
+    try { await runAnalystCycle(); } catch (e) { console.error(`[analyst] ${e.message}`); }
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runAnalystCycle().catch((e) => {
+  const watch = process.argv.includes("--watch");
+  (watch ? runAnalystWatch() : runAnalystCycle()).catch((e) => {
     console.error(e);
     process.exit(1);
   });

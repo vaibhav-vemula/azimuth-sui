@@ -19,8 +19,11 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const MEMWAL_KEY = process.env.MEMWAL_KEY || process.env.MEMWAL_PRIVATE_KEY;
 const MEMWAL_READY =
-  !!process.env.MEMWAL_KEY && !!process.env.MEMWAL_ACCOUNT_ID && !!process.env.MEMWAL_SERVER_URL;
+  !!MEMWAL_KEY && !!process.env.MEMWAL_ACCOUNT_ID && !!process.env.MEMWAL_SERVER_URL;
+
+const META_SEP = "\n::meta::"; // round-trips metadata through MemWal's text-only store
 
 export async function createMemory(namespace) {
   const ns = namespace || process.env.MEMWAL_NAMESPACE || "azimuth-net";
@@ -35,36 +38,60 @@ export async function createMemory(namespace) {
 }
 
 // ── MemWal-backed (Walrus Memory) ───────────────────────────────────────────────
+// Matches the documented SDK: `remember(text)` returns a job → `waitForRememberJob`,
+// and `recall({ query })`. Metadata is appended to the stored text (and parsed back on
+// recall) so it round-trips through MemWal's text-oriented store.
 async function memwalMemory(namespace) {
   // Imported lazily so the package isn't required for local-only runs.
   const { MemWal } = await import("@mysten-incubation/memwal");
   const mem = MemWal.create({
-    key: process.env.MEMWAL_KEY,
+    key: MEMWAL_KEY,
     accountId: process.env.MEMWAL_ACCOUNT_ID,
     serverUrl: process.env.MEMWAL_SERVER_URL,
     namespace,
   });
 
+  const pack = (text, metadata) => {
+    const t = typeof text === "string" ? text : JSON.stringify(text);
+    return metadata && Object.keys(metadata).length ? `${t}${META_SEP}${JSON.stringify(metadata)}` : t;
+  };
+  const unpack = (raw) => {
+    const s = typeof raw === "string" ? raw : raw?.text ?? raw?.content ?? JSON.stringify(raw);
+    const i = s.indexOf(META_SEP);
+    if (i === -1) return { text: s, metadata: {} };
+    let metadata = {};
+    try { metadata = JSON.parse(s.slice(i + META_SEP.length)); } catch {}
+    return { text: s.slice(0, i), metadata };
+  };
+
   return {
     backend: "memwal",
     async remember(text, metadata = {}) {
-      // MemWal `remember` persists to Walrus (encrypted) + indexes for semantic recall.
-      return mem.remember(typeof text === "string" ? text : JSON.stringify(text), { metadata });
+      const payload = pack(text, metadata);
+      // Prefer the one-shot store+wait; fall back to remember → waitForRememberJob.
+      if (typeof mem.rememberAndWait === "function") {
+        return mem.rememberAndWait(payload);
+      }
+      const job = await mem.remember(payload);
+      const jobId = job?.job_id ?? job?.jobId;
+      if (jobId && typeof mem.waitForRememberJob === "function") {
+        try { await mem.waitForRememberJob(jobId); } catch { /* eventual consistency is fine */ }
+      }
+      return job;
     },
     async recall(query, k = 5) {
-      const res = await mem.recall(query, { limit: k });
-      const items = Array.isArray(res) ? res : res?.results || res?.memories || [];
-      return items.map((r) => ({
-        text: r.text ?? r.content ?? (typeof r === "string" ? r : JSON.stringify(r)),
-        metadata: r.metadata ?? {},
-        score: r.score,
-      }));
+      const res = await mem.recall({ query });
+      const items = Array.isArray(res) ? res : res?.results ?? res?.memories ?? [];
+      return items.slice(0, k).map((r) => {
+        const { text, metadata } = unpack(r);
+        return { text, metadata, score: r?.score };
+      });
     },
     async list() {
       try {
-        const res = await mem.restore?.();
-        const items = Array.isArray(res) ? res : res?.memories || [];
-        return items.map((r) => ({ text: r.text ?? r.content, metadata: r.metadata ?? {} }));
+        const res = await mem.recall({ query: "" });
+        const items = Array.isArray(res) ? res : res?.results ?? res?.memories ?? [];
+        return items.map((r) => unpack(r));
       } catch {
         return [];
       }

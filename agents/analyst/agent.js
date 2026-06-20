@@ -7,10 +7,29 @@
  * reports become memory the agent builds on — "generate, store, and reuse files."
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { generateObject } from "ai";
 import { hasLLM, reasoningModel } from "../shared/llm.js";
-import { uploadArtifact } from "../shared/walrus.js";
+import { uploadArtifact, blobUrl } from "../shared/walrus.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const REPORTS_INDEX = path.resolve(__dirname, "../.memory/reports-index.json");
+
+/** Append a report to the index the image-dashboard reads (newest first, capped). */
+function appendReportIndex(entry) {
+  try {
+    fs.mkdirSync(path.dirname(REPORTS_INDEX), { recursive: true });
+    let arr = [];
+    try { arr = JSON.parse(fs.readFileSync(REPORTS_INDEX, "utf-8")); } catch {}
+    arr.unshift(entry);
+    fs.writeFileSync(REPORTS_INDEX, JSON.stringify(arr.slice(0, 200), null, 2));
+  } catch (err) {
+    console.warn(`[analyst] report index write failed: ${err.message}`);
+  }
+}
 
 const ReportSchema = z.object({
   cloudCoverPct: z.number().min(0).max(100),
@@ -96,5 +115,21 @@ export async function storeReport({ memory, report, pass, imageBlobId }) {
       `highValue ${report.highValue}]${stored.blobId ? ` artifact=${stored.blobId}` : ""}`,
     { type: "analysis-report", satellite: pass?.satellite, passId: pass?.id, reportBlobId: stored.blobId, imageBlobId, ...report }
   );
+
+  // Publish to the index the image-dashboard reads (so reports show under their images).
+  appendReportIndex({
+    imageBlobId: imageBlobId || null,
+    passId: pass?.id || null,
+    satellite: pass?.satellite || null,
+    reportBlobId: stored.blobId,
+    reportUrl: stored.blobId ? blobUrl(stored.blobId) : null,
+    summary: report.summary,
+    cloudCoverPct: report.cloudCoverPct,
+    qualityScore: report.qualityScore,
+    highValue: report.highValue,
+    anomalies: report.anomalies,
+    createdAt: new Date().toISOString(),
+  });
+
   return stored;
 }

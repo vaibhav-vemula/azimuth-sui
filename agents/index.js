@@ -5,14 +5,15 @@
  *   node index.js operator      one Operator planning cycle (STATION_ID)
  *   node index.js coordinator   one Coordinator coverage cycle (STATION_IDS)
  *   node index.js analyst       analyze new merged images (or a demo image)
- *   node index.js all           operator (per station) → coordinator → analyst
+ *   node index.js all           operator (per station) → coordinator → analyst (once)
+ *   node index.js watch         plan once, then keep the Analyst live on new images
  *   node index.js demo          scripted narrative showing memory compounding
  */
 
 import "./shared/env.js";
 import { runOperatorCycle } from "./operator/index.js";
 import { runCoordinatorCycle } from "./coordinator/index.js";
-import { runAnalystCycle } from "./analyst/index.js";
+import { runAnalystCycle, runAnalystWatch } from "./analyst/index.js";
 
 const mode = process.argv[2] || "all";
 const stationIds = (process.env.STATION_IDS || "station-a,station-b").split(",").map((s) => s.trim());
@@ -21,6 +22,13 @@ async function runAll() {
   for (const id of stationIds) await runOperatorCycle({ stationId: id });
   await runCoordinatorCycle({ stationIds });
   await runAnalystCycle();
+}
+
+// Live mode: plan once across stations, then keep the Analyst running on new images.
+async function runWatch() {
+  for (const id of stationIds) await runOperatorCycle({ stationId: id });
+  await runCoordinatorCycle({ stationIds });
+  await runAnalystWatch({ intervalMs: Number(process.env.WATCH_INTERVAL_MS || 30000) });
 }
 
 async function runDemo() {
@@ -50,6 +58,7 @@ const routes = {
   coordinator: () => runCoordinatorCycle({ stationIds }),
   analyst: () => runAnalystCycle(),
   all: runAll,
+  watch: runWatch,
   demo: runDemo,
 };
 

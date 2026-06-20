@@ -11,7 +11,9 @@ import { anthropic } from "@ai-sdk/anthropic";
 export const hasLLM = !!process.env.ANTHROPIC_API_KEY;
 
 export function reasoningModel() {
-  return anthropic(process.env.AZIMUTH_MODEL_REASON || "claude-opus-4-8");
+  // Sonnet 4.6 is the reliable default with the pinned AI SDK v4. (Opus 4.8 rejects the
+  // `temperature` param this SDK version sends; use it only with a newer @ai-sdk core.)
+  return anthropic(process.env.AZIMUTH_MODEL_REASON || "claude-sonnet-4-6");
 }
 
 export function fastModel() {

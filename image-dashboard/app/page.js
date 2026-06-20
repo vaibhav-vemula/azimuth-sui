@@ -5,6 +5,8 @@ import { useTheme } from "next-themes";
 import Image from "next/image";
 import { fetchImages } from "../lib/walrus";
 import { resolveMany } from "../lib/suins";
+import { fetchReports, reportsByImage } from "../lib/reports";
+import AgentIntelligence from "../components/AgentIntelligence";
 
 function timeAgo(date) {
   if (!date) return "—";
@@ -196,7 +198,7 @@ function ImageCard({ img, onClick, ensNames }) {
 
 // ─── Lightbox ─────────────────────────────────────────────────────────────────
 
-function Lightbox({ img, onClose, ensNames }) {
+function Lightbox({ img, onClose, ensNames, report }) {
   const c = img.completeness !== null ? completenessColor(img.completeness) : null;
 
   useEffect(() => {
@@ -296,6 +298,28 @@ function Lightbox({ img, onClose, ensNames }) {
             )}
           </div>
 
+          {report && (
+            <div className="mb-5 rounded-xl border border-violet-400/20 bg-violet-500/[0.05] p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-base">🤖</span>
+                <span className="text-xs font-semibold text-violet-300 uppercase tracking-widest">Agent Analysis</span>
+                {report.highValue && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-full px-2 py-0.5">high-value</span>
+                )}
+                <span className="ml-auto text-xs text-slate-500">
+                  {typeof report.cloudCoverPct === "number" ? `☁ ${report.cloudCoverPct}%` : ""}
+                  {typeof report.qualityScore === "number" ? `  ·  Q ${report.qualityScore}/10` : ""}
+                </span>
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{report.summary}</p>
+              {report.reportUrl && (
+                <a href={report.reportUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 hover:underline font-mono">
+                  verifiable memory on Walrus ↗
+                </a>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-3">
             <a
               href={img.imageUrl}
@@ -336,6 +360,7 @@ export default function ImageDashboard() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [filter, setFilter]         = useState("all");
   const [ensNames, setEnsNames]     = useState({});
+  const [reports, setReports]       = useState([]);
 
   const load = useCallback(async () => {
     const imgs = await fetchImages();
@@ -343,12 +368,17 @@ export default function ImageDashboard() {
     setLastUpdated(new Date());
     setLoading(false);
 
+    // Agent Intelligence reports (Analyst Agent → Walrus memory).
+    fetchReports().then(setReports).catch(() => {});
+
     // Resolve ENS names for all unique station addresses in the background
     const unique = [...new Set(imgs.flatMap((i) => i.stations))].filter(Boolean);
     if (unique.length > 0) {
       resolveMany(unique).then(setEnsNames).catch(() => {});
     }
   }, []);
+
+  const reportMap = reportsByImage(reports);
 
   useEffect(() => {
     load();
@@ -447,6 +477,9 @@ export default function ImageDashboard() {
           />
         </div>
 
+        {/* Agent Intelligence — Analyst reports + Walrus memory links */}
+        <AgentIntelligence reports={reports} />
+
         {/* Filter tabs */}
         <div className="flex items-center gap-3 mb-8">
           <span className="text-sm text-slate-500 font-medium">Show:</span>
@@ -502,7 +535,7 @@ export default function ImageDashboard() {
         </div>
       </main>
 
-      {selected && <Lightbox img={selected} onClose={() => setSelected(null)} ensNames={ensNames} />}
+      {selected && <Lightbox img={selected} onClose={() => setSelected(null)} ensNames={ensNames} report={reportMap[selected.blobId]} />}
     </div>
   );
 }

@@ -9,6 +9,7 @@
 
 import { z } from "zod";
 import { generateObject } from "ai";
+import { createSensorRecorder } from "@azimuth/memwal-depin";
 import { hasLLM, fastModel } from "../shared/llm.js";
 
 const DecisionSchema = z.object({
@@ -103,18 +104,23 @@ export function simulateOutcome(pass) {
 
 /** Persist a pass outcome to personal memory and refresh the shared station skill profile. */
 export async function recordOutcome({ memory, shared, stationId, pass, outcome }) {
+  // Record via the reusable DePIN→Walrus-memory adapter (the station is the sensor).
+  const recorder = createSensorRecorder(memory, { source: "azimuth-ground-station" });
   const text =
     `Station ${stationId} received ${pass.satellite} at ${pass.maxElevation}° elevation ` +
     `(localHour ${pass.localHour}): recovered ${outcome.packetsRecovered}/${outcome.totalPackets} ` +
     `packets (${Math.round(outcome.recoveredRatio * 100)}%), SNR ${outcome.snr}.`;
-  await memory.remember(text, {
-    type: "pass-outcome",
-    stationId,
+  await recorder.record({
+    sensorId: stationId,
+    type: "satellite-reception",
+    value: Math.round(outcome.recoveredRatio * 100),
+    unit: "% packets",
     satellite: pass.satellite,
     maxElevation: pass.maxElevation,
     localHour: pass.localHour,
     recoveredRatio: outcome.recoveredRatio,
     snr: outcome.snr,
+    note: text,
   });
 
   if (shared) {

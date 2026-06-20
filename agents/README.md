@@ -21,15 +21,32 @@ same interface, so the whole system runs immediately.
 ```bash
 cd agents
 cp .env.example .env      # optional: add ANTHROPIC_API_KEY, MemWal, PACKAGE_ID/REGISTRY_ID
-npm install
+npm install --legacy-peer-deps   # --legacy-peer-deps: MemWal's Seal peer wants @mysten/sui v2
 
 npm run demo              # scripted narrative: memory compounding → coordination → reports
+npm run watch            # LIVE: plan once, then auto-analyze new ImageMerged events
 # or individually:
 node index.js operator
 node index.js coordinator
-node index.js analyst
+node index.js analyst        # one pass   (node analyst/index.js --watch for continuous)
 node index.js all
 ```
+
+To use **real Walrus memory** instead of the local-JSON fallback, set `MEMWAL_KEY`
+(or `MEMWAL_PRIVATE_KEY`), `MEMWAL_ACCOUNT_ID`, `MEMWAL_SERVER_URL` from
+https://memory.walrus.xyz/ . To use **real Claude** agents, set `ANTHROPIC_API_KEY`.
+
+### Verifiability proof
+```bash
+npm run verify          # re-fetches the latest report blob from PUBLIC Walrus aggregators
+node verify.mjs <blobId>
+```
+Shows a memory blob is independently retrievable + byte-identical across aggregators (content-addressed,
+tamper-evident) — using no Azimuth keys.
+
+### Reusable tooling
+Sensor→Walrus-memory recording is factored into **[`../packages/memwal-depin`](../packages/memwal-depin)**,
+a standalone adapter any DePIN project can use. The Operator Agent records pass outcomes through it.
 
 ### Modes of operation
 - **No keys:** runs fully (heuristic planners + local memory + synthetic image) — great for a first look.

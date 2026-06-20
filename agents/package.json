@@ -9,10 +9,15 @@
     "operator": "node index.js operator",
     "coordinator": "node index.js coordinator",
     "analyst": "node index.js analyst",
-    "demo": "node index.js demo"
+    "watch": "node index.js watch",
+    "demo": "node index.js demo",
+    "verify": "node verify.mjs"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.0",
+    "@azimuth/memwal-depin": "file:../packages/memwal-depin",
+    "@mysten-incubation/memwal": "^0.0.7",
+    "@mysten/seal": "^1.2.1",
     "@mysten/sui": "^1.30.0",
     "ai": "^4.0.0",
     "dotenv": "^16.4.0",
