@@ -2,150 +2,151 @@
 
 # 🛰️ Azimuth
 
-### Decentralized Satellite Ground Station Network — on Sui + Walrus
+### A verifiable, shared memory of Earth — built by an autonomous sensor-agent network
 
-**Real hardware ground stations capture real satellite downlinks, store every byte on Walrus, and prove reception + availability on Sui.**
+**Real ground stations capture satellite imagery. Autonomous agents analyze it and accumulate a tamper-proof environmental record on Walrus — memory that's verifiable, shared, portable, and grounded in real-world data.**
 
 ![Sui](https://img.shields.io/badge/Sui-Move-4da2ff?style=flat-square)
 ![Walrus](https://img.shields.io/badge/Walrus-Blobs%20%2B%20Certificates-22c55e?style=flat-square)
-![Seal](https://img.shields.io/badge/Seal-Encrypted%20Premium%20Data-8b5cf6?style=flat-square)
-![DePIN](https://img.shields.io/badge/DePIN-Satellite_RF-f59e0b?style=flat-square)
+![MemWal](https://img.shields.io/badge/MemWal-Agent%20Memory-7c3aed?style=flat-square)
+![Seal](https://img.shields.io/badge/Seal-Encrypted%20Premium-8b5cf6?style=flat-square)
+![Claude](https://img.shields.io/badge/Agents-Claude%20%C2%B7%20Vercel%20AI%20SDK-d97757?style=flat-square)
+
+**Built for the [Sui Overflow](https://overflow.sui.io/) Walrus track — _"Walrus as a Verifiable Data Platform for AI."_**
 
 </div>
 
 ---
 
-Satellites pass overhead transmitting images and sensor data every day — and most of it is lost, because the **economics** of receiving it are broken. Azimuth turns low-cost, independently-run ground stations into a coordinated network that captures **real satellite downlinks**, merges partial captures from multiple stations into one complete image, stores all data on **Walrus**, and **proves every reception and its data availability on Sui** — paying operators who build a verifiable on-chain credit history from uptime and reception quality.
+## The idea
 
-> **Built for the [Sui Overflow](https://overflow.sui.io/) Walrus track** — *"Walrus as a Verifiable Data Platform for AI."* See **[`agents/`](agents/)**: a multi-agent ground-station network whose **memory lives on Walrus via MemWal** (Operator/Coordinator/Analyst agents). Plan: [`PATH_B_AGENTIC_PLAN.md`](PATH_B_AGENTIC_PLAN.md). The Sui + Walrus storage layer below is the substrate the agents act on.
+AI agents are powerful but **forgetful and siloed** — they lose context across sessions and can't share what they learn. The Walrus track asks builders to fix that using **Walrus + MemWal** as a *verifiable* memory layer for agents.
+
+**Azimuth answers with the one thing software-only agents can't fake: real-world data.** A network of real satellite ground stations feeds an autonomous multi-agent system whose memory lives on **Walrus via MemWal**:
+
+- **Operator Agents** learn, across sessions, which satellite passes are worth attempting.
+- A **Coordinator Agent** reads each station's *shared* skill profile and negotiates coverage to maximize combined image recovery.
+- An **Analyst Agent** turns merged images into intelligence reports, stores them on Walrus, and recalls prior reports to detect change over time.
+
+All of it — pass histories, station skill profiles, coverage plans, analysis reports — is **persistent, shareable, and tamper-evident** on Walrus. A station can't fake its own track record; the environmental record outlives any operator and is owned by no one.
+
+> **12-word pitch:** *Autonomous agents building a tamper-proof, shared memory of Earth on Walrus.*
 
 ---
 
-## Why this is a Walrus project, not a "we uploaded a file" project
+## It actually runs (verified live)
 
-Azimuth uses **six** distinct Sui/Walrus data capabilities, each tied to a real product need:
+Not slides — real output from the agents on Sui testnet, real Claude, and real MemWal:
 
-| # | Capability | Where | What it does |
-|---|---|---|---|
-| 1 | **On-chain Blob objects + availability certificates** | `sui-client/walrus.js`, `orbital_vault.move` | Captures upload via the Walrus SDK (registers a `Blob` object on Sui). The reconstructed image is anchored in an `ImageCapture` object with its blob id + certified epoch — proof-of-reception backed by proof-of-availability. |
-| 2 | **Programmable storage lifecycle** | `record_image`, `walrus.js` | High-completeness captures are marked `high_value`; storage can be renewed/extended from policy. |
-| 3 | **Quilt batching** | `sui-client/quilt.js` | Dozens of tiny RF packets per pass are batched into one Walrus Quilt instead of many wasteful blobs. |
-| 4 | **Seal encryption + on-chain access control** | `access_policy.move`, `sui-client/seal.js` | Full-res / raw captures are Seal-encrypted; `seal_approve` releases decryption only to the capturing station or a buyer who paid via `buy_access` — a decentralized satellite-data marketplace. |
-| 5 | **Walrus Sites** | `walrus-sites/` | The dashboards are deployable as Walrus Sites — antenna → UI, fully decentralized. |
-| 6 | **Verifiable provenance** | `submit_porx`, events | Anyone can re-fetch a blob from Walrus and re-check the packet Merkle root against the on-chain proof. |
+**Operator Agent — real Claude planning, memory on Walrus (MemWal):**
+```
+🛰️  Operator Agent [station-a] — memory backend: memwal
+   planner: LLM
+   [ATTEMPT] P9 NOAA-15 @76° — Highest priorSNR (8.4) and ~overhead 76° elevation; best candidate
+             to establish a baseline. High confidence of clean APT recovery.
+   [skip]    ISS @41° — SSTV not weather imagery, below-average SNR, NOAA-15 overlaps 6 min later.
+   remembered: Station station-a received NOAA-15 at 76° (91% packets, SNR 14.2)  → Walrus
+```
+
+**Coordinator Agent — multi-agent negotiation from shared MemWal profiles:**
+```
+🛰️  Coordinator Agent — stations [station-a, station-b] — memory: memwal
+   Pass NOAA-15 (76°) — LLM
+     station-a → AOS  (tied at 71% avg recovery — split to maximize coverage, no redundant capture)
+     station-b → LOS  (complements station-a's AOS half across the full 8-min pass)
+```
+
+**Verifiability proof — anyone can independently re-fetch a memory:**
+```
+🔎 blob 9iYp6QSq… — no Azimuth keys, just public aggregators
+   ✅ aggregator.walrus-testnet.walrus.space      361 bytes · sha256 c29d7bee…
+   ✅ walrus-testnet-aggregator.nodes.guru        361 bytes · sha256 c29d7bee…
+   ✅ byte-identical across independent aggregators → durable, portable, tamper-evident
+```
+
+---
+
+## How it maps to the Walrus track
+
+| Track asks for… | Azimuth delivers | Where |
+|---|---|---|
+| **Long-term agent memory (verifiable)** | Operator recalls pass history from **MemWal**; decisions compound across sessions | `agents/operator/` |
+| **Multi-agent coordination** | Coordinator negotiates AOS/LOS coverage from **shared** memory | `agents/coordinator/` |
+| **Artifact-driven workflows** | Analyst writes intelligence reports to **Walrus**, reuses priors for change detection | `agents/analyst/` |
+| **Cross-agent / shared memory** | One shared MemWal namespace = the network's verifiable brain | `agents/shared/memory.js` |
+| **Tooling for Walrus/MemWal adoption** | **`@azimuth/memwal-depin`** — reusable DePIN-sensor → Walrus-memory adapter | `packages/memwal-depin/` |
+| **Verifiable data** | `npm run verify` re-fetches a memory from public aggregators, byte-identical | `agents/verify.mjs` |
+| **Privacy** | Premium captures **Seal-encrypted**, on-chain access policy | `move/.../access_policy.move` |
 
 ---
 
 ## Architecture
 
 ```
-  ESP32 / RTL-SDR satellite downlink
-            │  JPEG packets (RF)
-            ▼
-  ground_station/azimuth_station.py        ← hardware capture (Pygame UI)
-            │  reception_event.json  ▲ sui_state.json
-            ▼                        │
-  sui-client/  (Node service)        │
-   ├─ packets → Walrus (+ Quilt)     │   on-chain Blob objects + certificates
-   ├─ submit_porx  → Sui PTB         │   (PoRxSubmitted event carries blob id)
-   ├─ heartbeat    → Sui PTB         │   PoA availability
-   ├─ verify peers → Sui PTB         │   cross-station verification → reward paid
-   ├─ settle_poa_epoch crank         │   (replaces Hedera Schedule Service)
-   └─ merge ≥2 stations → Walrus → record_image (ImageCapture anchors blob)
-            │
-            ▼
-  Move package  azimuth::orbital_vault + azm + access_policy   (Sui testnet)
-            │
-            ▼
-  dashboard/ (station ops)   image-dashboard/ (gallery)   → optionally Walrus Sites
+┌──────────────────────── AGENT LAYER (agents/) ─────────────────────────┐
+│  Operator · Coordinator · Analyst   — Claude via Vercel AI SDK           │
+│  memory on Walrus via MemWal (verifiable, shared, portable)             │
+└─────────▲──────────────────────────────────────────────▲───────────────┘
+          │ reads Sui events / Walrus images              │ writes reports → Walrus
+┌─────────┴──────────────── SUI + WALRUS SUBSTRATE ───────┴───────────────┐
+│  ground_station/ (real RF capture) → sui-client/ (Node service)         │
+│  move/azimuth (staking · PoA/PoRx · rewards · ImageCapture + certs)     │
+│  Walrus (blobs + certificates · Quilt · Seal)  ·  Sui (objects, events) │
+│  dashboard/ (station ops)  ·  image-dashboard/ (gallery + Agent panel)  │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### What replaced Hedera
+The **agents are the star**; the Sui + Walrus pipeline below them is the substrate that produces the real data they remember. (That pipeline is itself a full DePIN system — see [`HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).)
 
-| Hedera (old) | Sui / Walrus (now) |
-|---|---|
-| Solidity `OrbitalVault.sol` | Move package `azimuth::orbital_vault` |
-| HTS token (AZM) | `Coin<AZM>` via `coin::create_currency` (`azm.move`) |
-| HCS coordination topic | Sui Move **events** (`PoRxSubmitted`, `ImageMerged`, …) |
-| Hedera Schedule Service | **Permissionless `settle_poa_epoch` crank** + unstake **cooldown** |
-| Walrus via raw HTTP | Walrus **SDK** → on-chain `Blob` objects + certificates, Quilt, Seal |
-| Arweave / Irys | **removed** (single storage layer: Walrus) |
-| ENS identity | **SuiNS** (built-in `SuiClient` name resolution) |
+---
+
+## Quick start — run the agents
+
+```bash
+cd agents
+cp .env.example .env
+npm install --legacy-peer-deps
+
+npm run demo     # scripted: memory compounds → coordination → analysis report
+npm run verify   # independent verifiability proof of a memory blob on Walrus
+```
+
+Runs immediately with **no credentials** (heuristic planners + local memory). Add keys to go fully real:
+- `ANTHROPIC_API_KEY` → real Claude agents (+ vision)
+- `MEMWAL_KEY` / `MEMWAL_ACCOUNT_ID` / `MEMWAL_SERVER_URL` (from https://memory.walrus.xyz/) → memory on Walrus
+- `PACKAGE_ID` / `REGISTRY_ID` / `STATION_IDS` → Analyst reads real `ImageMerged` events; Operator acts on-chain
+- then `npm run watch` — plan once, then auto-analyze every new merged image
+
+The full ground-station + chain + dashboards setup is in [`SETUP.md`](docs/SETUP.md).
 
 ---
 
 ## Repository layout
 
 ```
-move/azimuth/          Sui Move package (sources/ + tests/)
-move/scripts/          deploy + init scripts (publish.sh, setup.mjs, register.mjs)
-sui-client/            Node service that runs on each ground station
-dashboard/             Next.js station-ops dashboard (Sui reads + dApp Kit wallet)
-image-dashboard/       Next.js merged-image gallery (Walrus + on-chain certificates)
-ground_station/        Python LoRa/RTL-SDR receiver + Pygame UI (hardware capture)
+agents/                The multi-agent system (Operator · Coordinator · Analyst) + verify.mjs
+packages/memwal-depin/ Reusable DePIN-sensor → Walrus-memory adapter
+move/azimuth/          Sui Move package (staking, PoA/PoRx, rewards, image records, Seal policy)
+sui-client/            Node service per station (heartbeats, proofs, Walrus, image merge)
+ground_station/        Python LoRa/RTL-SDR receiver + Pygame UI (real hardware capture)
+dashboard/             Station-ops dashboard (Sui + dApp Kit + SuiNS)
+image-dashboard/       Merged-image gallery + Agent Intelligence panel
 walrus-sites/          Walrus Sites hosting configs
-SUI_WALRUS_PLAN.md     Strategy / winning plan
-SETUP.md               Step-by-step deploy + run guide
 ```
 
----
-
-## The on-chain model (`azimuth::orbital_vault`)
-
-- **`StationRegistry`** (shared): AZM reward pool, station table, epoch params.
-- **`Station`**: stake (`Balance<AZM>`), heartbeats, reward totals, unstake cooldown.
-- **`PoRxProof`** (shared object): per-pass packet proof referencing a Walrus blob id; a *second* station calls `verify_porx`, which pays the reward.
-- **`ImageCapture`** (shared object): the merged image anchored to its Walrus blob id + certified epoch.
-- **Events** replace HCS coordination; the merger and dashboards read them via RPC.
-- **PoA epochs** settle through a permissionless `settle_poa_epoch` crank gated by the on-chain `Clock` — the `sui-client` runs it on a timer.
-
-See `move/azimuth/sources/` and `move/azimuth/tests/orbital_vault_tests.move`.
+Key docs: [`HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md) · [`SUI_STACK.md`](docs/SUI_STACK.md) · [`SETUP.md`](docs/SETUP.md) · [`WINNING_PLAN.md`](docs/WINNING_PLAN.md) · [`DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)
 
 ---
 
-## Quick start
+## Status (honest)
 
-Full instructions in **[SETUP.md](SETUP.md)**. In short:
+- ✅ **Verified live:** MemWal write/recall, Operator (real Claude + MemWal), Coordinator (negotiation from shared memory), the verifiability proof, the reusable adapter.
+- ✅ **Built:** Move package (+ tests), sui-client, both dashboards (Agent Intelligence panel), Quilt/Seal paths.
+- ⏳ **Needs the Move package published** for the Analyst's *real-image* Claude vision (set real `PACKAGE_ID`/`REGISTRY_ID`); until then it analyzes a synthetic image but still writes reports to Walrus.
+- ⏳ **Submission:** demo video (see [`DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md)).
 
-```bash
-# 1. Publish the Move package (Sui CLI + funded testnet wallet required)
-cd move/scripts && ./publish.sh        # prints PACKAGE_ID, REGISTRY_ID, caps…
-
-# 2. Init: fund the reward pool, start epochs, distribute stake
-cp .env.example .env && $EDITOR .env   # paste the IDs
-npm i && node setup.mjs
-
-# 3. Each station registers itself (with its own key)
-node register.mjs
-
-# 4. Run the station service alongside the hardware capture
-cd ../../sui-client && cp .env.example .env && $EDITOR .env && npm i && node index.js
-cd ../ground_station && python3 azimuth_station.py
-
-# 5. Dashboards (set NEXT_PUBLIC_PACKAGE_ID / REGISTRY_ID in .env.local first)
-cd ../dashboard && npm i && npm run dev            # :3000
-cd ../image-dashboard && npm i && npm run dev      # :3001
-```
+> Notes: Opus 4.8 needs a newer AI SDK than the pinned v4 (it rejects the `temperature` param), so the agents default to **Claude Sonnet 4.6**. MemWal requires `@mysten/seal` at runtime and `--legacy-peer-deps` (its Seal peer wants `@mysten/sui` v2).
 
 ---
 
-## Demo flow (what judges see)
-
-1. A reception fires → packets uploaded to Walrus (+ Quilt); a `Blob` object exists on Sui.
-2. `submit_porx` lands; `PoRxSubmitted` event carries the blob id.
-3. A second station's `verify_porx` → AZM reward paid (`Coin<AZM>` balance increases).
-4. The primary station merges ≥2 stations, uploads the image to Walrus, and `record_image` creates an `ImageCapture` anchoring the blob + certificate.
-5. The gallery renders the image from Walrus and links to its **on-chain availability certificate**.
-6. Premium raw data is Seal-encrypted; only a station/buyer who passes `seal_approve` can decrypt.
-
----
-
-## Notes & honest tradeoffs
-
-- **No on-chain scheduler on Sui** → PoA settlement and unstake are permissionless cranks + cooldowns.
-- **SDK versions** for `@mysten/walrus` / `@mysten/seal` evolve; Quilt/Seal calls are isolated in `quilt.js` / `seal.js` / `walrus.js` for easy version pinning.
-- The Python hardware capture is unchanged except the shared state file name (`sui_state.json`) and a UI label.
-
----
-
-*One product, two networks doing real work: **Sui** settles and proves it · **Walrus** stores and certifies it.*
+*One product, three networks doing real work: **Sui** proves it · **Walrus + MemWal** remember it · **the hardware** grounds it in reality.*

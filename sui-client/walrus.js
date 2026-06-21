@@ -1,50 +1,54 @@
 /**
- * walrus.js — Walrus storage via the @mysten/walrus SDK.
+ * walrus.js — Walrus blob storage via the testnet HTTP publisher/aggregator.
  *
- * Replaces the old raw-HTTP publisher/aggregator client. The SDK registers a
- * `Blob` Move object on Sui and certifies availability, so every upload returns
- * an on-chain object id + certified epoch — not just an opaque blob id. That
- * on-chain availability certificate is what we anchor in `orbital_vault`.
+ * The publisher performs the on-chain registration + certification and returns the
+ * `blobObject` (its Sui object id + certified epoch), so we still anchor real on-chain
+ * availability — without depending on the Walrus SDK (which is tied to a specific
+ * @mysten/sui major). Returns `{ blobId, blobObjectId, certifiedEpoch }`.
  */
 
-import { walrusClient, keypair, WALRUS_EPOCHS } from "./config.js";
+import { WALRUS_EPOCHS } from "./config.js";
 
-function toBytes(data) {
-  if (data instanceof Uint8Array) return data;
-  if (Buffer.isBuffer(data)) return new Uint8Array(data);
-  return new Uint8Array(Buffer.from(data));
+const PUBLISHER = process.env.WALRUS_PUBLISHER || "https://publisher.walrus-testnet.walrus.space";
+const AGGREGATOR = process.env.WALRUS_AGGREGATOR || "https://aggregator.walrus-testnet.walrus.space";
+
+function toBuffer(data) {
+  if (Buffer.isBuffer(data)) return data;
+  if (data instanceof Uint8Array) return Buffer.from(data);
+  return Buffer.from(data);
 }
 
-/**
- * Upload a single blob. Returns { blobId, blobObjectId, certifiedEpoch }.
- * `deletable: true` lets a high-value capture be re-managed later.
- */
+/** Upload bytes. Returns { blobId, blobObjectId, certifiedEpoch }. */
 export async function uploadToWalrus(data, { epochs = WALRUS_EPOCHS, deletable = false } = {}) {
-  const blob = toBytes(data);
-  const result = await walrusClient.writeBlob({ blob, deletable, epochs, signer: keypair });
+  const body = toBuffer(data);
+  const url = `${PUBLISHER}/v1/blobs?epochs=${epochs}${deletable ? "&deletable=true" : ""}`;
+  const res = await fetch(url, { method: "PUT", body });
+  if (!res.ok) throw new Error(`Walrus upload failed ${res.status}: ${await res.text().catch(() => "")}`);
+  const json = await res.json();
 
-  const blobId = result.blobId;
-  const blobObject = result.blobObject ?? null;
-  const blobObjectId = blobObject?.id?.id ?? blobObject?.id ?? null;
-  const certifiedEpoch = blobObject?.certified_epoch ?? blobObject?.certifiedEpoch ?? 0;
+  const created = json.newlyCreated?.blobObject;
+  const certified = json.alreadyCertified;
+  const blobId = created?.blobId ?? certified?.blobId;
+  if (!blobId) throw new Error(`Walrus upload: no blobId in ${JSON.stringify(json)}`);
+  const blobObjectId = created?.id ?? certified?.blobObjectId ?? null;
+  const certifiedEpoch = created?.certifiedEpoch ?? created?.storage?.endEpoch ?? certified?.endEpoch ?? 0;
 
-  console.log(`[WALRUS] Uploaded ${blob.length} bytes → blob ${blobId} (obj ${blobObjectId ?? "?"})`);
+  console.log(`[WALRUS] Uploaded ${body.length} bytes → blob ${blobId} (obj ${blobObjectId ?? "?"})`);
   return { blobId, blobObjectId, certifiedEpoch };
 }
 
 /** Download a blob by id. Returns a Buffer. */
 export async function downloadFromWalrus(blobId) {
-  const bytes = await walrusClient.readBlob({ blobId });
-  return Buffer.from(bytes);
+  const res = await fetch(`${AGGREGATOR}/v1/blobs/${blobId}`);
+  if (!res.ok) throw new Error(`Walrus download failed ${res.status} for ${blobId}`);
+  return Buffer.from(await res.arrayBuffer());
 }
 
-/**
- * Extend storage duration for a high-value capture (programmable storage).
- * API name has varied across SDK versions; we try the common ones.
- */
-export async function renewBlob(blobObjectId, epochs = WALRUS_EPOCHS) {
-  if (typeof walrusClient.extendBlob === "function") {
-    return walrusClient.extendBlob({ blobObjectId, epochs, signer: keypair });
-  }
-  throw new Error("renewBlob: walrusClient.extendBlob not available in this SDK version");
+export function blobUrl(blobId) {
+  return `${AGGREGATOR}/v1/blobs/${blobId}`;
+}
+
+/** Extending storage over HTTP isn't supported; use the Walrus CLI (`walrus extend`). */
+export async function renewBlob() {
+  throw new Error("renewBlob: extend storage via the Walrus CLI (`walrus extend <blobId>`)");
 }

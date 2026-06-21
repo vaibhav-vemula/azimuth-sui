@@ -1,0 +1,9 @@
+# Azimuth ground station (azimuth_station.py) — Python dependencies
+# Install:  pip3 install -r requirements.txt
+#
+# Everything else used (sys, os, time, struct, io, json, hashlib, base64,
+# random, argparse, glob) is part of the Python standard library.
+
+pyserial>=3.5      # serial RX from the LoRa/RTL-SDR USB receiver bridge
+Pillow>=10.0.0     # JPEG decode/assembly (PIL.Image)
+pygame>=2.5.0      # sci-fi status UI (imported even in --no-ui mode)

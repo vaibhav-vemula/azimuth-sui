@@ -1,13 +1,14 @@
 /**
- * config.js — Shared Sui client, keypair, and Walrus client.
+ * config.js — Shared Sui client + keypair.
  *
- * Replaces the Hedera ethers/@hashgraph setup. All on-chain calls go through
- * `suiClient` + `keypair`; all storage goes through `walrusClient`.
+ * On @mysten/sui v2 the JSON-RPC client moved to `@mysten/sui/jsonRpc` as
+ * `SuiJsonRpcClient` (same methods as the old SuiClient) and now exposes the v2
+ * `.core` interface that @mysten/seal 1.x requires. Walrus blob storage goes
+ * through the HTTP publisher/aggregator (see walrus.js) — no Walrus SDK needed.
  */
 
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { WalrusClient } from "@mysten/walrus";
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,11 +27,9 @@ function required(name) {
 
 export const NETWORK = process.env.SUI_NETWORK || "testnet";
 
-export const suiClient = new SuiClient({ url: getFullnodeUrl(NETWORK) });
+export const suiClient = new SuiJsonRpcClient({ url: getJsonRpcFullnodeUrl(NETWORK), network: NETWORK });
 export const keypair = Ed25519Keypair.fromSecretKey(required("SUI_PRIVATE_KEY"));
 export const address = keypair.toSuiAddress();
-
-export const walrusClient = new WalrusClient({ network: NETWORK, suiClient });
 
 export const PACKAGE_ID = required("PACKAGE_ID");
 export const REGISTRY_ID = required("REGISTRY_ID");

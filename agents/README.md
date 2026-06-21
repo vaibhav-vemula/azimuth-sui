@@ -70,4 +70,4 @@ analyst/  agent + runner
 index.js  orchestrator (operator | coordinator | analyst | all | demo)
 ```
 
-See `../PATH_B_AGENTIC_PLAN.md` for the full design and judging-criteria mapping.
+See `../docs/PATH_B_AGENTIC_PLAN.md` for the full design and judging-criteria mapping.

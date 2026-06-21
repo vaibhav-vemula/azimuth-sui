@@ -426,9 +426,9 @@ def main():
     rx_buf = bytearray()
     reception_event_sent = False
 
-    # Hedera state (read from hedera_state.json)
-    hedera_state = None
-    hedera_last_read = 0.0
+    # Chain state (read from sui_state.json)
+    chain_state = None
+    chain_last_read = 0.0
 
     # Layout constants
     MARGIN = 30
@@ -543,10 +543,10 @@ def main():
         if status == "RECEIVING" and now - last_rx_time > 10:
             status = "SEARCHING"
 
-        # ---- Read Hedera state (every 2 seconds) -------------------------
-        if now - hedera_last_read > 2.0:
-            hedera_state = read_chain_state()
-            hedera_last_read = now
+        # ---- Read chain state (every 2 seconds) --------------------------
+        if now - chain_last_read > 2.0:
+            chain_state = read_chain_state()
+            chain_last_read = now
 
         # ---- Rebuild image on new packet ----------------------------------
         if image_dirty and total_packets > 0:
@@ -610,76 +610,76 @@ def main():
         grid.cols = min(max_cols, max(total_packets, 1))
         grid.draw(screen, set(chunks.keys()), total_packets if total_packets > 0 else 0)
 
-        # ---- Left panel: Hedera status -----------------------------------
+        # ---- Left panel: chain status ------------------------------------
         # Position below the progress grid
         grid_rows = (max(total_packets, 1) + grid.cols - 1) // grid.cols if grid.cols > 0 else 1
-        hedera_y = grid.y + grid_rows * (grid.cell + grid.gap) + 30
+        panel_y = grid.y + grid_rows * (grid.cell + grid.gap) + 30
 
-        draw_text(screen, "[ SUI · WALRUS ]", font_md, CYAN, (MARGIN, hedera_y))
-        hedera_y += 30
+        draw_text(screen, "[ SUI · WALRUS ]", font_md, CYAN, (MARGIN, panel_y))
+        panel_y += 30
 
-        if hedera_state and hedera_state.get("station"):
-            hs = hedera_state.get("station", {})
-            hp = hedera_state.get("poa", {})
-            hx = hedera_state.get("porx", {})
-            hb = hedera_state.get("heartbeat", {})
+        if chain_state and chain_state.get("station"):
+            hs = chain_state.get("station", {})
+            hp = chain_state.get("poa", {})
+            hx = chain_state.get("porx", {})
+            hb = chain_state.get("heartbeat", {})
 
             # Station status
             active_str = "ACTIVE" if hs.get("active") else "INACTIVE"
             active_clr = NEON if hs.get("active") else RED
-            draw_text(screen, f"STATION   {active_str}", font_sm, active_clr, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+            draw_text(screen, f"STATION   {active_str}", font_sm, active_clr, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # Heartbeat count
             hb_count = hb.get("count", 0) if hb else 0
-            draw_text(screen, f"HEARTBEAT #{hb_count}", font_sm, WHITE, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+            draw_text(screen, f"HEARTBEAT #{hb_count}", font_sm, WHITE, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # PoA epoch
             epoch = hp.get("epoch", 0) if hp else 0
-            draw_text(screen, f"PoA EPOCH #{epoch}", font_sm, NEON, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+            draw_text(screen, f"PoA EPOCH #{epoch}", font_sm, NEON, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # Next settlement countdown
             next_settle = hp.get("nextSettlement", 0) if hp else 0
             if next_settle > 0:
-                remaining = max(0, next_settle - int(now))
+                remaining = max(0, int(next_settle) - int(now))
                 mins = remaining // 60
                 secs = remaining % 60
-                draw_text(screen, f"NEXT PoA  {mins:02d}:{secs:02d}", font_sm, AMBER, (MARGIN + 10, hedera_y))
+                draw_text(screen, f"NEXT PoA  {mins:02d}:{secs:02d}", font_sm, AMBER, (MARGIN + 10, panel_y))
             else:
-                draw_text(screen, "NEXT PoA  --:--", font_sm, AMBER, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+                draw_text(screen, "NEXT PoA  --:--", font_sm, AMBER, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # PoA total rewards
             poa_total = hs.get("totalPoaRewards", 0)
-            draw_text(screen, f"PoA EARNED {poa_total} AZM", font_sm, NEON, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+            draw_text(screen, f"PoA EARNED {poa_total} AZM", font_sm, NEON, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # PoRx total rewards
             porx_total = hs.get("totalPorxRewards", 0)
-            draw_text(screen, f"PoRx EARNED {porx_total} AZM", font_sm, CYAN, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+            draw_text(screen, f"PoRx EARNED {porx_total} AZM", font_sm, CYAN, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # Pending PoRx
             pending = hx.get("pending", []) if hx else []
             if pending:
-                draw_text(screen, f"PoRx PENDING {len(pending)}", font_sm, AMBER, (MARGIN + 10, hedera_y))
+                draw_text(screen, f"PoRx PENDING {len(pending)}", font_sm, AMBER, (MARGIN + 10, panel_y))
             else:
-                draw_text(screen, "PoRx PENDING 0", font_sm, NEON_DIM, (MARGIN + 10, hedera_y))
-            hedera_y += 22
+                draw_text(screen, "PoRx PENDING 0", font_sm, NEON_DIM, (MARGIN + 10, panel_y))
+            panel_y += 22
 
             # Schedule address (truncated)
             sched = hp.get("nextSchedule", "") if hp else ""
             if sched and sched != "0x0000000000000000000000000000000000000000":
                 short = sched[:8] + "..." + sched[-4:]
-                draw_text(screen, f"SCHED {short}", font_xs, NEON_DIM, (MARGIN + 10, hedera_y))
+                draw_text(screen, f"SCHED {short}", font_xs, NEON_DIM, (MARGIN + 10, panel_y))
         else:
-            draw_text(screen, "OFFLINE", font_sm, RED, (MARGIN + 10, hedera_y))
-            hedera_y += 22
-            draw_text(screen, "Start hedera-client", font_xs, NEON_DIM, (MARGIN + 10, hedera_y))
-            hedera_y += 18
-            draw_text(screen, "node hedera-client/index.js", font_xs, (50, 80, 60), (MARGIN + 10, hedera_y))
+            draw_text(screen, "OFFLINE", font_sm, RED, (MARGIN + 10, panel_y))
+            panel_y += 22
+            draw_text(screen, "Start sui-client", font_xs, NEON_DIM, (MARGIN + 10, panel_y))
+            panel_y += 18
+            draw_text(screen, "node sui-client/index.js", font_xs, (50, 80, 60), (MARGIN + 10, panel_y))
 
         # ---- Right panel: image preview -----------------------------------
         pygame.draw.rect(screen, BORDER, (IMG_X - 2, IMG_Y - 2, IMG_W + 4, IMG_H + 4), 1)
