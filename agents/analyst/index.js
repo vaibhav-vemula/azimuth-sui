@@ -16,6 +16,26 @@ import { analyzeImage, storeReport } from "./agent.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SEEN_FILE = path.resolve(__dirname, "../.memory/analyst-seen.json");
+const DEFAULT_SATELLITE = (process.env.AZIMUTH_SATELLITES || "METEOR-M2-3").split(",")[0].trim();
+
+/**
+ * Infer the real satellite for a pass: find that pass's PoRxSubmitted event, download a
+ * station's packet payload from Walrus, and read the `satellite` the station recorded.
+ */
+async function inferSatellite(passId, fallback = DEFAULT_SATELLITE) {
+  try {
+    const { data } = await queryEvents("PoRxSubmitted", { limit: 50 });
+    const ev = data.find(
+      (e) => e.parsedJson?.walrus_blob_id && bytesToHex(e.parsedJson.pass_id) === passId
+    );
+    if (ev) {
+      const buf = await downloadBlob(ev.parsedJson.walrus_blob_id);
+      const payload = JSON.parse(buf.toString("utf-8"));
+      if (payload.satellite) return payload.satellite;
+    }
+  } catch { /* fall through */ }
+  return fallback;
+}
 
 function loadSeen() {
   try { return new Set(JSON.parse(fs.readFileSync(SEEN_FILE, "utf-8"))); } catch { return new Set(); }
@@ -32,7 +52,7 @@ export async function runAnalystCycle() {
   if (!chainReady) {
     console.log("   chain not configured → demo on a synthetic image");
     const imageBytes = Buffer.from(Array.from({ length: 8192 }, (_, i) => (i * 37) % 256));
-    const pass = { id: `DEMO-${Date.now()}`, satellite: "NOAA-19" };
+    const pass = { id: `DEMO-${Date.now()}`, satellite: DEFAULT_SATELLITE };
     const { report, usedLLM } = await analyzeImage({ imageBytes, pass, memory });
     const stored = await storeReport({ memory, report, pass, imageBlobId: null });
     console.log(`   ${usedLLM ? "LLM" : "heuristic"} report: ${report.summary}`);
@@ -51,7 +71,8 @@ export async function runAnalystCycle() {
     console.log(`   analyzing merged image for pass ${String(passId).slice(0, 12)}… (blob ${j.walrus_blob_id})`);
     try {
       const imageBytes = await downloadBlob(j.walrus_blob_id);
-      const pass = { id: passId, satellite: j.satellite || "unknown" };
+      const satellite = await inferSatellite(passId);
+      const pass = { id: passId, satellite };
       const { report, usedLLM } = await analyzeImage({ imageBytes, pass, memory });
       const stored = await storeReport({ memory, report, pass, imageBlobId: j.walrus_blob_id });
       console.log(`   ${usedLLM ? "LLM" : "heuristic"}: ${report.summary}`);

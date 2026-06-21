@@ -8,7 +8,7 @@
 
 import fs from "node:fs";
 import crypto from "node:crypto";
-import { EVENT_FILE, address, WALRUS_EPOCHS } from "./config.js";
+import { EVENT_FILE, address, WALRUS_EPOCHS, SATELLITE } from "./config.js";
 import { uploadToWalrus } from "./walrus.js";
 import { uploadPacketsAsQuilt } from "./quilt.js";
 import { encryptForPass } from "./seal.js";
@@ -43,7 +43,7 @@ async function submitProof(data) {
 
     // 1. Store this station's packet payload on Walrus (single JSON blob — the
     //    merger downloads this to reconstruct the image).
-    const payload = { passId, station: address, packetCount, totalPackets, avgRssi, avgSnr, packets: packetBytes };
+    const payload = { passId, station: address, satellite: data.satellite || SATELLITE, packetCount, totalPackets, avgRssi, avgSnr, packets: packetBytes };
     const { blobId } = await uploadToWalrus(Buffer.from(JSON.stringify(payload)), { epochs: WALRUS_EPOCHS });
     console.log(`[PORX] Packets stored on Walrus → ${blobId}`);
 

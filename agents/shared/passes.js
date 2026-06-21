@@ -6,13 +6,25 @@
  * the agent system is unaffected.
  */
 
-const SATELLITES = [
-  { name: "NOAA-19", band: "APT", freqMHz: 137.1 },
-  { name: "NOAA-18", band: "APT", freqMHz: 137.9125 },
-  { name: "NOAA-15", band: "APT", freqMHz: 137.62 },
-  { name: "METEOR-M2-3", band: "LRPT", freqMHz: 137.9 },
-  { name: "ISS", band: "SSTV", freqMHz: 145.8 },
-];
+import "./env.js";
+
+// Known satellite catalog (band + downlink). METEOR-M2-3 first — it's the one in use.
+const CATALOG = {
+  "METEOR-M2-3": { band: "LRPT", freqMHz: 137.9 },
+  "METEOR-M2-4": { band: "LRPT", freqMHz: 137.1 },
+  "NOAA-19": { band: "APT", freqMHz: 137.1 },
+  "NOAA-18": { band: "APT", freqMHz: 137.9125 },
+  "NOAA-15": { band: "APT", freqMHz: 137.62 },
+  "ISS": { band: "SSTV", freqMHz: 145.8 },
+};
+
+// Override which satellites the agents track:  AZIMUTH_SATELLITES=METEOR-M2-3,NOAA-19
+// Default leads with METEOR-M2-3 and shows a few others "live".
+const SATELLITES = (
+  process.env.AZIMUTH_SATELLITES
+    ? process.env.AZIMUTH_SATELLITES.split(",").map((s) => s.trim()).filter(Boolean)
+    : ["METEOR-M2-3", "NOAA-19", "NOAA-18", "ISS"]
+).map((name) => ({ name, band: CATALOG[name]?.band || "LRPT", freqMHz: CATALOG[name]?.freqMHz || 137.9 }));
 
 /** Deterministic pseudo-random in [0,1) from a string seed. */
 function seeded(seed) {

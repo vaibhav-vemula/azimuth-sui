@@ -41,6 +41,9 @@ export const RUN_CRANK = process.env.RUN_CRANK !== "false";
 export const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL_MS || "60000");
 export const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || "15000");
 export const SEAL_THRESHOLD = parseInt(process.env.SEAL_THRESHOLD || "2");
+// The satellite this station is tuned to — carried in the Walrus packet payload so the
+// Analyst can infer the real satellite for each pass.
+export const SATELLITE = process.env.AZIMUTH_SATELLITE || "METEOR-M2-3";
 export const WALRUS_EPOCHS = parseInt(process.env.WALRUS_EPOCHS || "5");
 
 export const STATE_FILE = path.resolve(
