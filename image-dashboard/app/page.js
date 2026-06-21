@@ -5,7 +5,7 @@ import { useTheme } from "next-themes";
 import Image from "next/image";
 import { fetchImages } from "../lib/walrus";
 import { resolveMany } from "../lib/suins";
-import { fetchReports, reportsByImage } from "../lib/reports";
+import { fetchReports, reportsByImage, reportForImage } from "../lib/reports";
 import AgentIntelligence from "../components/AgentIntelligence";
 
 function timeAgo(date) {
@@ -121,7 +121,7 @@ function StationPill({ address, ensNames }) {
 
 // ─── Image card ───────────────────────────────────────────────────────────────
 
-function ImageCard({ img, onClick, ensNames }) {
+function ImageCard({ img, onClick, ensNames, report }) {
   const [imgError, setImgError] = useState(false);
   const c = img.completeness !== null ? completenessColor(img.completeness) : null;
 
@@ -153,6 +153,15 @@ function ImageCard({ img, onClick, ensNames }) {
           <div className="absolute top-3 right-3">
             <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${c.badge}`}>
               {img.completeness}%
+            </span>
+          </div>
+        )}
+
+        {/* Agent-analyzed badge (top-left) */}
+        {report && (
+          <div className="absolute top-3 left-3">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-violet-200 bg-violet-600/70 backdrop-blur px-2 py-1 rounded-full border border-violet-300/30">
+              🤖 Analyzed
             </span>
           </div>
         )}
@@ -191,6 +200,15 @@ function ImageCard({ img, onClick, ensNames }) {
             ? img.stations.map((s) => <StationPill key={s} address={s} ensNames={ensNames} />)
             : <span className="text-xs text-slate-500">—</span>}
         </div>
+
+        {/* Agent analysis one-liner */}
+        {report && (
+          <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/[0.05]">
+            <p className="text-xs text-violet-500 dark:text-violet-300 line-clamp-2">
+              🤖 {report.summary}
+            </p>
+          </div>
+        )}
       </div>
     </button>
   );
@@ -523,7 +541,7 @@ export default function ImageDashboard() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 fade-up">
             {filtered.map((img) => (
-              <ImageCard key={img.blobId} img={img} onClick={setSelected} ensNames={ensNames} />
+              <ImageCard key={img.blobId} img={img} onClick={setSelected} ensNames={ensNames} report={reportForImage(reportMap, img)} />
             ))}
           </div>
         )}
@@ -535,7 +553,7 @@ export default function ImageDashboard() {
         </div>
       </main>
 
-      {selected && <Lightbox img={selected} onClose={() => setSelected(null)} ensNames={ensNames} report={reportMap[selected.blobId]} />}
+      {selected && <Lightbox img={selected} onClose={() => setSelected(null)} ensNames={ensNames} report={reportForImage(reportMap, selected)} />}
     </div>
   );
 }

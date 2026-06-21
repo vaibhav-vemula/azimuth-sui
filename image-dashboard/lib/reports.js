@@ -10,11 +10,21 @@ export async function fetchReports() {
   }
 }
 
-/** Index reports by the image blob they analyzed, for per-image attachment. */
+/**
+ * Index reports for per-image lookup. Keyed by BOTH the analyzed image blob id and
+ * the passId, so an image matches whether or not the analyst captured its blob id.
+ */
 export function reportsByImage(reports) {
   const map = {};
   for (const r of reports) {
     if (r.imageBlobId && !map[r.imageBlobId]) map[r.imageBlobId] = r;
+    if (r.passId && !map[r.passId]) map[r.passId] = r;
   }
   return map;
+}
+
+/** Find the report for an image by blob id, then passId. */
+export function reportForImage(map, img) {
+  if (!map || !img) return null;
+  return map[img.blobId] || map[img.passId] || null;
 }
