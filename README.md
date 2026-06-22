@@ -2,9 +2,9 @@
 
 # 🛰️ Azimuth
 
-### A verifiable, shared memory of Earth — built by an autonomous sensor-agent network
+### A decentralized satellite ground-station network
 
-**Real ground stations capture satellite imagery. Autonomous agents analyze it and accumulate a tamper-proof environmental record on Walrus — memory that's verifiable, shared, portable, and grounded in real-world data.**
+**Low-cost stations capture live satellite imagery, prove every reception on Sui, and store every byte on Walrus — an open alternative to $100k+ closed ground stations that pays its operators. On top of that data pipeline, AI agents run the network and build a verifiable, shared memory of Earth on Walrus.**
 
 ![Sui](https://img.shields.io/badge/Sui-Move-4da2ff?style=flat-square)
 ![Walrus](https://img.shields.io/badge/Walrus-Blobs%20%2B%20Certificates-22c55e?style=flat-square)
@@ -18,19 +18,36 @@
 
 ---
 
-## The idea
+## The problem
 
-AI agents are powerful but **forgetful and siloed** — they lose context across sessions and can't share what they learn. The Walrus track asks builders to fix that using **Walrus + MemWal** as a *verifiable* memory layer for agents.
+Satellites broadcast weather and Earth imagery overhead every day — and most of it is lost on the ground. Ground-station infrastructure is **centralized, expensive ($100k+ to build, ~$22/min on cloud), and closed.** A handful of corporations decide who receives satellite data, where it's stored, and who gets access. Research teams, universities, and startups are priced out — the barrier isn't technical, it's economic. And a single dish only ever catches a fraction of a pass, so data is lost even where stations do exist.
 
-**Azimuth answers with the one thing software-only agents can't fake: real-world data.** A network of real satellite ground stations feeds an autonomous multi-agent system whose memory lives on **Walrus via MemWal**:
+## The solution
 
-- **Operator Agents** learn, across sessions, which satellite passes are worth attempting.
-- A **Coordinator Agent** reads each station's *shared* skill profile and negotiates coverage to maximize combined image recovery.
-- An **Analyst Agent** turns merged images into intelligence reports, stores them on Walrus, and recalls prior reports to detect change over time.
+**Azimuth is ground-station infrastructure as a protocol.** Low-cost, independently-run stations capture real satellite downlinks and earn **AZM** for it — zero upfront cost, first data in minutes, open and portable instead of locked in.
 
-All of it — pass histories, station skill profiles, coverage plans, analysis reports — is **persistent, shareable, and tamper-evident** on Walrus. A station can't fake its own track record; the environmental record outlives any operator and is owned by no one.
+- **Real hardware at the edge** — RTL-SDR/LoRa + Raspberry Pi nodes pull live imagery from the METEOR-M2-3 weather satellite. Not a simulation; we capture real passes today.
+- **Proof on Sui** — every reception is anchored with Proof-of-Availability (heartbeats) and Proof-of-Reception (peer-verified Merkle roots). On-chain, or it didn't happen.
+- **Storage on Walrus** — every packet and merged image is a Walrus blob with an on-chain availability certificate. Publicly re-verifiable, byte-identical across aggregators.
+- **Higher quality, not just cheaper** — because the network merges captures from multiple stations, it recovers complete images no single dish could. Quality goes *up* as the network grows.
 
-> **12-word pitch:** *Autonomous agents building a tamper-proof, shared memory of Earth on Walrus.*
+---
+
+## Why agents are necessary
+
+A network of independent, untrusted stations **can't be run by hand.** Three decisions have to happen continuously and at scale:
+
+- **Which** passes each station should attempt — limited time, power, and antenna.
+- **How** to split a single pass across stations so their captures merge into one complete image.
+- **What** each merged image actually shows — turning raw pixels into intelligence.
+
+Azimuth runs a **multi-agent system** to make these decisions. And because the network is decentralized, the agents' memory can't live in one operator's private database — it lives on **Walrus via MemWal**: persistent, shared, and verifiable, so every station works from the same tamper-evident record.
+
+- **Operator Agent** (one per station) — recalls its own reception history from MemWal and *learns*, across sessions, which passes are worth attempting.
+- **Coordinator Agent** — reads every station's *shared* skill profile and negotiates coverage (AOS/LOS split) to maximize combined image recovery.
+- **Analyst Agent** — turns each merged image into an intelligence report on Walrus, and recalls prior reports to detect change over time.
+
+A station can't fake its own track record; the environmental record outlives any operator and is owned by no one. What makes it credible is the grounding — this memory comes from a real physical sensor network, not a toy chatbot.
 
 ---
 
@@ -66,15 +83,15 @@ Not slides — real output from the agents on Sui testnet, real Claude, and real
 
 ---
 
-## How it maps to the Walrus track
+## What each piece does
 
-| Track asks for… | Azimuth delivers | Where |
+| Capability | How Azimuth delivers it | Where |
 |---|---|---|
 | **Long-term agent memory (verifiable)** | Operator recalls pass history from **MemWal**; decisions compound across sessions | `agents/operator/` |
 | **Multi-agent coordination** | Coordinator negotiates AOS/LOS coverage from **shared** memory | `agents/coordinator/` |
 | **Artifact-driven workflows** | Analyst writes intelligence reports to **Walrus**, reuses priors for change detection | `agents/analyst/` |
 | **Cross-agent / shared memory** | One shared MemWal namespace = the network's verifiable brain | `agents/shared/memory.js` |
-| **Tooling for Walrus/MemWal adoption** | **`@azimuth/memwal-depin`** — reusable DePIN-sensor → Walrus-memory adapter | `packages/memwal-depin/` |
+| **Reusable tooling** | **`@azimuth/memwal-depin`** — reusable DePIN-sensor → Walrus-memory adapter | `packages/memwal-depin/` |
 | **Verifiable data** | `npm run verify` re-fetches a memory from public aggregators, byte-identical | `agents/verify.mjs` |
 | **Privacy** | Premium captures **Seal-encrypted**, on-chain access policy | `move/.../access_policy.move` |
 
@@ -83,20 +100,20 @@ Not slides — real output from the agents on Sui testnet, real Claude, and real
 ## Architecture
 
 ```
-┌──────────────────────── AGENT LAYER (agents/) ─────────────────────────┐
-│  Operator · Coordinator · Analyst   — Claude via Vercel AI SDK           │
-│  memory on Walrus via MemWal (verifiable, shared, portable)             │
-└─────────▲──────────────────────────────────────────────▲───────────────┘
+┌─────────────────────── DATA PIPELINE (the product) ────────────────────────┐
+│  ground_station/ (real RF capture) → sui-client/ (Node service per station) │
+│  move/azimuth (staking · PoA/PoRx · rewards · ImageCapture + certs)         │
+│  Walrus (blobs + certificates · Quilt · Seal)  ·  Sui (objects, events)     │
+│  dashboard/ (station ops)  ·  image-dashboard/ (gallery + Agent panel)      │
+└─────────▲──────────────────────────────────────────────▲──────────────────┘
           │ reads Sui events / Walrus images              │ writes reports → Walrus
-┌─────────┴──────────────── SUI + WALRUS SUBSTRATE ───────┴───────────────┐
-│  ground_station/ (real RF capture) → sui-client/ (Node service)         │
-│  move/azimuth (staking · PoA/PoRx · rewards · ImageCapture + certs)     │
-│  Walrus (blobs + certificates · Quilt · Seal)  ·  Sui (objects, events) │
-│  dashboard/ (station ops)  ·  image-dashboard/ (gallery + Agent panel)  │
-└──────────────────────────────────────────────────────────────────────────┘
+┌─────────┴──────────────── AGENT LAYER (agents/) ────────┴──────────────────┐
+│  Operator · Coordinator · Analyst   — Claude via Vercel AI SDK              │
+│  memory on Walrus via MemWal (verifiable, shared, portable)                │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The **agents are the star**; the Sui + Walrus pipeline below them is the substrate that produces the real data they remember. (That pipeline is itself a full DePIN system — see [`HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md).)
+The Sui + Walrus pipeline is the product — a full DePIN system that produces real, verifiable data (see [`HOW_IT_WORKS.md`](docs/HOW_IT_WORKS.md)). The agents run on top of it, turning that data into coordinated decisions and durable memory.
 
 ---
 
@@ -124,11 +141,11 @@ The full ground-station + chain + dashboards setup is in [`SETUP.md`](docs/SETUP
 ## Repository layout
 
 ```
+ground_station/        Python LoRa/RTL-SDR receiver + Pygame UI (real hardware capture)
+sui-client/            Node service per station (heartbeats, proofs, Walrus, image merge)
+move/azimuth/          Sui Move package (staking, PoA/PoRx, rewards, image records, Seal policy)
 agents/                The multi-agent system (Operator · Coordinator · Analyst) + verify.mjs
 packages/memwal-depin/ Reusable DePIN-sensor → Walrus-memory adapter
-move/azimuth/          Sui Move package (staking, PoA/PoRx, rewards, image records, Seal policy)
-sui-client/            Node service per station (heartbeats, proofs, Walrus, image merge)
-ground_station/        Python LoRa/RTL-SDR receiver + Pygame UI (real hardware capture)
 dashboard/             Station-ops dashboard (Sui + dApp Kit + SuiNS)
 image-dashboard/       Merged-image gallery + Agent Intelligence panel
 walrus-sites/          Walrus Sites hosting configs
