@@ -26,8 +26,12 @@ async function runAll() {
 
 // Live mode: plan once across stations, then keep the Analyst running on new images.
 async function runWatch() {
-  for (const id of stationIds) await runOperatorCycle({ stationId: id });
-  await runCoordinatorCycle({ stationIds });
+  for (const id of stationIds) {
+    try { await runOperatorCycle({ stationId: id }); }
+    catch (e) { console.warn(`[watch] operator ${id} failed: ${e.message}`); }
+  }
+  try { await runCoordinatorCycle({ stationIds }); }
+  catch (e) { console.warn(`[watch] coordinator failed: ${e.message}`); }
   await runAnalystWatch({ intervalMs: Number(process.env.WATCH_INTERVAL_MS || 30000) });
 }
 

@@ -7,7 +7,7 @@
 
 import { createMemory } from "../shared/memory.js";
 import { predictUpcomingPasses } from "../shared/passes.js";
-import { planCoverage, publishPlan } from "./agent.js";
+import { planCoverage, publishPlan, loadProfileHits } from "./agent.js";
 
 export async function runCoordinatorCycle({ stationIds, count = 3 } = {}) {
   const ids = stationIds || (process.env.STATION_IDS || "station-a,station-b").split(",").map((s) => s.trim());
@@ -18,8 +18,11 @@ export async function runCoordinatorCycle({ stationIds, count = 3 } = {}) {
   // Use station-a's predicted schedule as the shared pass timeline.
   const passes = predictUpcomingPasses(ids[0], count);
 
+  // One recall of all station skill profiles, reused for every pass below.
+  const profileHits = await loadProfileHits(shared);
+
   for (const pass of passes) {
-    const plan = await planCoverage({ pass, stationIds: ids, shared });
+    const plan = await planCoverage({ pass, stationIds: ids, profileHits });
     console.log(`\n   Pass ${pass.id} (${pass.satellite}, ${pass.maxElevation}°) — ${plan.usedLLM ? "LLM" : "heuristic"}`);
     for (const a of plan.assignments) console.log(`     ${a.stationId} → ${a.role}  (${a.reason})`);
     const text = await publishPlan(shared, pass, plan);

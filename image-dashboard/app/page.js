@@ -218,6 +218,9 @@ function ImageCard({ img, onClick, ensNames, report }) {
 
 function Lightbox({ img, onClose, ensNames, report }) {
   const c = img.completeness !== null ? completenessColor(img.completeness) : null;
+  const q = report?.qualityScore ?? 0;
+  const qBar = q >= 8 ? "bg-emerald-400" : q >= 5 ? "bg-amber-400" : "bg-red-400";
+  const qColor = q >= 8 ? "text-emerald-300" : q >= 5 ? "text-amber-300" : "text-red-300";
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -231,22 +234,16 @@ function Lightbox({ img, onClose, ensNames, report }) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#0d1117] border border-slate-200 dark:border-white/[0.08] rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl shadow-black/60"
+        className="bg-white dark:bg-[#0d1117] border border-slate-200 dark:border-white/[0.08] rounded-2xl w-full max-w-5xl max-h-[88vh] flex flex-col md:flex-row overflow-hidden shadow-2xl shadow-black/60"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image */}
-        <div className="relative bg-black">
+        {/* Image (left, fixed) */}
+        <div className="relative bg-black shrink-0 md:w-1/2 flex items-center justify-center">
           <img
             src={img.imageUrl}
             alt="Satellite pass"
-            className="w-full object-contain max-h-[58vh]"
+            className="w-full h-full object-contain max-h-[40vh] md:max-h-[88vh]"
           />
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center text-xl transition-colors border border-white/[0.1]"
-          >
-            ×
-          </button>
           {c && (
             <div className="absolute top-3 left-3">
               <span className={`text-sm font-bold px-3 py-1.5 rounded-full border ${c.badge}`}>
@@ -256,8 +253,17 @@ function Lightbox({ img, onClose, ensNames, report }) {
           )}
         </div>
 
-        {/* Info panel */}
-        <div className="p-6">
+        {/* Right column: scrollable details + fixed footer */}
+        <div className="flex-1 min-w-0 flex flex-col min-h-0 relative">
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center text-xl transition-colors border border-white/[0.1]"
+          >
+            ×
+          </button>
+
+        {/* Info panel (scrollable) */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           <div className="flex items-start justify-between mb-5">
             <div>
               <p className="text-lg font-bold text-slate-900 dark:text-white">Satellite Pass</p>
@@ -317,28 +323,95 @@ function Lightbox({ img, onClose, ensNames, report }) {
           </div>
 
           {report && (
-            <div className="mb-5 rounded-xl border border-violet-400/20 bg-violet-500/[0.05] p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-base">🤖</span>
-                <span className="text-xs font-semibold text-violet-300 uppercase tracking-widest">Agent Analysis</span>
-                {report.highValue && (
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/25 rounded-full px-2 py-0.5">high-value</span>
-                )}
-                <span className="ml-auto text-xs text-slate-500">
-                  {typeof report.cloudCoverPct === "number" ? `☁ ${report.cloudCoverPct}%` : ""}
-                  {typeof report.qualityScore === "number" ? `  ·  Q ${report.qualityScore}/10` : ""}
-                </span>
+            <div className="mb-5 rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.08] via-violet-500/[0.03] to-transparent overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 py-3.5 border-b border-violet-400/15">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15 text-violet-300 text-base shrink-0">🤖</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white leading-none">Agent Analysis</p>
+                  <p className="text-[11px] text-slate-500 mt-1">AI vision · stored on Walrus</p>
+                </div>
+                <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                  {report.satellite && (
+                    <span className="text-xs font-semibold text-violet-300 bg-violet-500/10 border border-violet-500/25 rounded-full px-2.5 py-1">{report.satellite}</span>
+                  )}
+                  {report.highValue && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-1">★ High-value</span>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{report.summary}</p>
+
+              {/* Metric tiles */}
+              <div className="grid grid-cols-2 gap-3 p-4">
+                {typeof report.cloudCoverPct === "number" && (
+                  <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-500">Cloud cover</span>
+                      <span className="text-sm font-bold text-cyan-500 dark:text-cyan-300">{report.cloudCoverPct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-200 dark:bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className="h-full bg-cyan-400 rounded-full" style={{ width: `${report.cloudCoverPct}%` }} />
+                    </div>
+                  </div>
+                )}
+                {typeof report.qualityScore === "number" && (
+                  <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.02] p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] uppercase tracking-wider text-slate-500">Quality</span>
+                      <span className={`text-sm font-bold ${qColor}`}>{report.qualityScore}/10</span>
+                    </div>
+                    <div className="h-1.5 bg-slate-200 dark:bg-white/[0.06] rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${qBar}`} style={{ width: `${Math.min(100, q * 10)}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Anomalies */}
+              {Array.isArray(report.anomalies) && report.anomalies.length > 0 && (
+                <div className="px-4 pb-2">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Anomalies</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {report.anomalies.map((a, i) => (
+                      <span key={i} className="text-xs text-red-500 dark:text-red-300 bg-red-500/10 border border-red-500/25 rounded-full px-2.5 py-1">⚠ {a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Features */}
+              {Array.isArray(report.features) && report.features.length > 0 && (
+                <div className="px-4 pb-2">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Features</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {report.features.map((f, i) => (
+                      <span key={i} className="text-xs text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-full px-2.5 py-1">{f}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Summary */}
+              {report.summary && (
+                <div className="px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-500 mb-1.5">Summary</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed">{report.summary}</p>
+                </div>
+              )}
+
+              {/* Footer link */}
               {report.reportUrl && (
-                <a href={report.reportUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 hover:underline font-mono">
-                  verifiable memory on Walrus ↗
+                <a href={report.reportUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-4 py-3 border-t border-violet-400/15 text-xs font-mono text-cyan-500 hover:text-cyan-400 dark:text-cyan-400 dark:hover:text-cyan-300 hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors">
+                  🔗 verifiable memory on Walrus ↗
                 </a>
               )}
             </div>
           )}
 
-          <div className="flex gap-3">
+        </div>
+
+        {/* Footer (fixed) */}
+        <div className="shrink-0 flex gap-3 border-t border-slate-200 dark:border-white/[0.06] p-4 bg-white dark:bg-[#0d1117]">
             <a
               href={img.imageUrl}
               target="_blank"
@@ -362,7 +435,7 @@ function Lightbox({ img, onClose, ensNames, report }) {
             >
               Close
             </button>
-          </div>
+        </div>
         </div>
       </div>
     </div>

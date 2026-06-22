@@ -23,20 +23,31 @@ const DecisionSchema = z.object({
   ),
 });
 
-/** Pull this station's recalled history for each satellite into a compact context block. */
-async function recallHistory(memory, passes) {
+/** ONE recall per cycle → group this station's history by satellite (minimizes relayer calls). */
+async function recallBySatellite(memory) {
+  const hits = await memory.recall("satellite reception outcome elevation snr packets recovery", 24);
+  const bySat = {};
+  for (const h of hits) {
+    const sat = h.metadata?.satellite || "unknown";
+    (bySat[sat] ||= []).push(h);
+  }
+  return bySat;
+}
+
+/** Compact per-satellite history block for the LLM prompt. */
+function historyBlocks(bySat, passes) {
   const sats = [...new Set(passes.map((p) => p.satellite))];
   const blocks = [];
   for (const sat of sats) {
-    const hits = await memory.recall(`reception outcome for ${sat} elevation snr packets`, 4);
-    if (hits.length) blocks.push(`${sat}:\n` + hits.map((h) => `  - ${h.text}`).join("\n"));
+    const hits = bySat[sat] || [];
+    if (hits.length) blocks.push(`${sat}:\n` + hits.slice(0, 4).map((h) => `  - ${h.text}`).join("\n"));
   }
   return blocks.join("\n") || "(no prior reception history yet)";
 }
 
 /** Average recovered-packet ratio recalled for a satellite (for the heuristic path). */
 function historyBonus(hits) {
-  const ratios = hits
+  const ratios = (hits || [])
     .map((h) => h.metadata?.recoveredRatio)
     .filter((r) => typeof r === "number");
   if (!ratios.length) return 0;
@@ -44,7 +55,8 @@ function historyBonus(hits) {
 }
 
 export async function planPasses({ stationId, memory, passes }) {
-  const history = await recallHistory(memory, passes);
+  const bySat = await recallBySatellite(memory);   // single recall, reused below
+  const history = historyBlocks(bySat, passes);
 
   if (hasLLM) {
     const prompt = [
@@ -73,10 +85,10 @@ export async function planPasses({ stationId, memory, passes }) {
     }
   }
 
-  // Heuristic fallback: prior SNR + recalled historical success.
+  // Heuristic fallback: prior SNR + recalled historical success (reuses the single recall).
   const plan = [];
   for (const p of passes) {
-    const hits = await memory.recall(`reception outcome for ${p.satellite}`, 4);
+    const hits = bySat[p.satellite] || [];
     const bonus = historyBonus(hits); // 0..1
     const priority = Math.min(10, Math.round((p.predictedSnrPrior / 10) * 6 + bonus * 4));
     plan.push({

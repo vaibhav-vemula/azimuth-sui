@@ -23,22 +23,26 @@ const PlanSchema = z.object({
   rationale: z.string(),
 });
 
-/** Recall each station's historical recovery for this satellite from shared memory. */
-async function gatherProfiles(shared, satellite, stationIds) {
-  const profiles = [];
-  for (const stationId of stationIds) {
-    const hits = await shared.recall(`skill profile station ${stationId} ${satellite}`, 3);
-    const ratios = hits
-      .map((h) => h.metadata?.recoveredRatio)
-      .filter((r) => typeof r === "number");
+/** Build per-station profiles for a satellite from pre-recalled shared-memory hits (no I/O). */
+function gatherProfiles(profileHits, satellite, stationIds) {
+  return stationIds.map((stationId) => {
+    const sh = (profileHits || []).filter(
+      (h) => h.metadata?.stationId === stationId &&
+        (!h.metadata?.satellite || h.metadata.satellite === satellite)
+    );
+    const ratios = sh.map((h) => h.metadata?.recoveredRatio).filter((r) => typeof r === "number");
     const avg = ratios.length ? ratios.reduce((a, b) => a + b, 0) / ratios.length : null;
-    profiles.push({ stationId, avgRecovery: avg, samples: ratios.length, notes: hits.map((h) => h.text) });
-  }
-  return profiles;
+    return { stationId, avgRecovery: avg, samples: ratios.length, notes: sh.map((h) => h.text) };
+  });
 }
 
-export async function planCoverage({ pass, stationIds, shared }) {
-  const profiles = await gatherProfiles(shared, pass.satellite, stationIds);
+/** One recall of all station skill profiles (call once per coordinator run, reuse per pass). */
+export async function loadProfileHits(shared) {
+  return shared.recall("skill profile station satellite recovery", 50);
+}
+
+export async function planCoverage({ pass, stationIds, profileHits }) {
+  const profiles = gatherProfiles(profileHits, pass.satellite, stationIds);
 
   if (hasLLM) {
     const prompt = [

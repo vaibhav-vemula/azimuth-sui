@@ -67,25 +67,42 @@ async function memwalMemory(namespace) {
   return {
     backend: "memwal",
     async remember(text, metadata = {}) {
-      const payload = pack(text, metadata);
-      // Prefer the one-shot store+wait; fall back to remember → waitForRememberJob.
-      if (typeof mem.rememberAndWait === "function") {
-        return mem.rememberAndWait(payload);
+      // MemWal is a beta relayer over a network — never let a transient failure crash the agent.
+      try {
+        const payload = pack(text, metadata);
+        if (typeof mem.rememberAndWait === "function") {
+          return await mem.rememberAndWait(payload);
+        }
+        const job = await mem.remember(payload);
+        const jobId = job?.job_id ?? job?.jobId;
+        if (jobId && typeof mem.waitForRememberJob === "function") {
+          try { await mem.waitForRememberJob(jobId); } catch { /* eventual consistency is fine */ }
+        }
+        return job;
+      } catch (err) {
+        console.warn(`[memory] MemWal remember failed (${err.message}) — skipped`);
+        return null;
       }
-      const job = await mem.remember(payload);
-      const jobId = job?.job_id ?? job?.jobId;
-      if (jobId && typeof mem.waitForRememberJob === "function") {
-        try { await mem.waitForRememberJob(jobId); } catch { /* eventual consistency is fine */ }
-      }
-      return job;
     },
     async recall(query, k = 5) {
-      const res = await mem.recall({ query });
-      const items = Array.isArray(res) ? res : res?.results ?? res?.memories ?? [];
-      return items.slice(0, k).map((r) => {
-        const { text, metadata } = unpack(r);
-        return { text, metadata, score: r?.score };
-      });
+      // The SDK aborts recall at a hard 15s; cold-start/slow responses fail — so retry once.
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        try {
+          const res = await mem.recall({ query });
+          const items = Array.isArray(res) ? res : res?.results ?? res?.memories ?? [];
+          return items.slice(0, k).map((r) => {
+            const { text, metadata } = unpack(r);
+            return { text, metadata, score: r?.score };
+          });
+        } catch (err) {
+          if (attempt === 2) {
+            console.warn(`[memory] MemWal recall failed (${err.message}) — continuing without history`);
+            return [];
+          }
+          await new Promise((r) => setTimeout(r, 1500));
+        }
+      }
+      return [];
     },
     async list() {
       try {

@@ -128,6 +128,7 @@ export async function storeReport({ memory, report, pass, imageBlobId }) {
     qualityScore: report.qualityScore,
     highValue: report.highValue,
     anomalies: report.anomalies,
+    features: report.features,
     createdAt: new Date().toISOString(),
   });
 
